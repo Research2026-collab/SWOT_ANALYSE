@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SWOT-Analyse</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background: #f0f0f0; min-height: 100vh; display: flex; flex-direction: column; }
+  .header { background: #fff; padding: 18px 40px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #ddd; }
+  .header-title { text-align: center; flex: 1; }
+  .header-title .main { font-size: 22px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #222; }
+  .header-title .sub  { font-size: 14px; font-weight: 300; letter-spacing: 3px; text-transform: uppercase; color: #666; margin-top: 2px; }
+  .toggle-bar { background: #fff; display: flex; justify-content: center; gap: 12px; padding: 12px; border-bottom: 1px solid #ddd; }
+  .vbtn { padding: 8px 28px; border: 2px solid #999; background: #fff; border-radius: 4px; font-size: 13px; cursor: pointer; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #555; }
+  .vbtn.active { background: #444; color: #fff; border-color: #444; }
+  .main-wrap { flex: 1; padding: 28px 32px; }
+  .board-outer { position: relative; width: 100%; max-width: 1100px; margin: 0 auto; padding-left: 50px; }
+  .axis-label { position: absolute; color: #A6AAA9; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; text-align: center; left: 0; }
+  .axis-label small { display: block; font-weight: 300; font-size: 10px; text-transform: none; margin-top: 2px; }
+  .axis-intern { top: 25%; transform: rotate(-90deg) translateX(-50%); transform-origin: left center; }
+  .axis-extern { top: 73%; transform: rotate(-90deg) translateX(-50%); transform-origin: left center; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; border: 2px solid #000; position: relative; }
+  .quadrant { padding: 22px 24px 24px; min-height: 260px; background: #fff; border: 1px solid #000; }
+  .q-title { font-size: 20px; font-weight: 800; letter-spacing: 1px; margin-bottom: 14px; }
+  .q-s .q-title { color: #93B7CA; }
+  .q-w .q-title { color: #c8c600; }
+  .q-o .q-title { color: #857D72; }
+  .q-t .q-title { color: #939D43; }
+  .q-items { list-style: none; }
+  .q-items li { font-size: 13px; color: #333; padding: 4px 0 4px 16px; position: relative; line-height: 1.5; }
+  .q-items li::before { content: '•'; position: absolute; left: 0; color: #888; }
+  .q-items li.empty { color: #bbb; font-style: italic; }
+  .q-items li.empty::before { content: ''; }
+  .center-circle { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 70px; height: 70px; z-index: 10; pointer-events: none; }
+  .circle-bg { width: 70px; height: 70px; border-radius: 50%; background: #DCDEE0; display: flex; align-items: center; justify-content: center; }
+  .circle-bg span { font-size: 14px; font-weight: 900; color: #444; letter-spacing: 1px; }
+  #input-view { display: none; }
+  #board-view { display: block; }
+  .input-card { max-width: 540px; margin: 0 auto; background: #fff; border-radius: 8px; padding: 36px 40px; box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+  .input-card h2 { font-size: 18px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: #333; margin-bottom: 24px; }
+  .field-group { margin-bottom: 20px; }
+  .field-group label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #666; margin-bottom: 6px; }
+  .field-group select, .field-group textarea { width: 100%; border: 1px solid #ccc; border-radius: 4px; padding: 10px 12px; font-size: 14px; font-family: inherit; color: #333; outline: none; background: #fff; }
+  .field-group textarea { resize: vertical; min-height: 100px; }
+  .btn-submit { width: 100%; padding: 12px; background: #444; color: #fff; border: none; border-radius: 4px; font-size: 14px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; }
+  .btn-submit:hover { background: #222; }
+  .btn-submit:disabled { background: #aaa; cursor: default; }
+  .status-msg { margin-top: 14px; font-size: 13px; text-align: center; min-height: 20px; }
+  .status-msg.ok  { color: #4a7c4e; font-weight: 600; }
+  .status-msg.err { color: #b94444; font-weight: 600; }
+  .poll-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #ccc; margin-left: 6px; vertical-align: middle; }
+  .poll-dot.live { background: #5cb85c; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div style="width:80px"></div>
+  <div class="header-title">
+    <div class="main">SWOT-Analyse</div>
+    <div class="sub">Workshop</div>
+  </div>
+  <div style="width:80px; text-align:right; font-size:11px; color:#aaa;">
+    Live <span class="poll-dot" id="pdot"></span>
+  </div>
+</div>
+
+<div class="toggle-bar">
+  <button class="vbtn active" onclick="switchView('board')">Board</button>
+  <button class="vbtn" onclick="switchView('input')">Eintrag hinzufügen</button>
+</div>
+
+<div class="main-wrap">
+  <div id="board-view">
+    <div class="board-outer">
+      <div class="axis-label axis-intern">Interne Faktoren<small>beeinflussbar</small></div>
+      <div class="axis-label axis-extern">Externe Faktoren<small>nicht beeinflussbar</small></div>
+      <div class="grid">
+        <div class="quadrant q-s">
+          <div class="q-title">Stärken</div>
+          <ul class="q-items" id="list-S"><li class="empty">Noch keine Einträge</li></ul>
+        </div>
+        <div class="quadrant q-w">
+          <div class="q-title">Schwächen</div>
+          <ul class="q-items" id="list-W"><li class="empty">Noch keine Einträge</li></ul>
+        </div>
+        <div class="quadrant q-o">
+          <div class="q-title">Chancen</div>
+          <ul class="q-items" id="list-O"><li class="empty">Noch keine Einträge</li></ul>
+        </div>
+        <div class="quadrant q-t">
+          <div class="q-title">Risiken</div>
+          <ul class="q-items" id="list-T"><li class="empty">Noch keine Einträge</li></ul>
+        </div>
+        <div class="center-circle">
+          <div class="circle-bg"><span>SWOT</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="input-view">
+    <div class="input-card">
+      <h2>Neuer Eintrag</h2>
+      <div class="field-group">
+        <label>Kategorie</label>
+        <select id="q-select">
+          <option value="S">Stärken</option>
+          <option value="W">Schwächen</option>
+          <option value="O">Chancen</option>
+          <option value="T">Risiken</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label>Eintrag</label>
+        <textarea id="text-in" placeholder="Eintrag eingeben …"></textarea>
+      </div>
+      <button class="btn-submit" id="submit-btn" onclick="submitEntry()">Speichern</button>
+      <div class="status-msg" id="status-msg"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var GAS_URL = 'https://script.google.com/macros/s/AKfycbwgOqctswlPRK-IEX4WGg0ZQBJmB1A3fTYt_8iqAVMc8s7g8lyMItmuzzxuEX8Jrw_x7A/exec';
+
+  function jsonp(url, callback) {
+    var name = 'cb_' + Date.now();
+    window[name] = function(data) {
+      callback(data);
+      delete window[name];
+      document.getElementById(name) && document.getElementById(name).remove();
+    };
+    var s = document.createElement('script');
+    s.id = name;
+    s.src = url + '&callback=' + name;
+    s.onerror = function() { callback(null); s.remove(); };
+    document.body.appendChild(s);
+  }
+
+  function switchView(v) {
+    document.getElementById('board-view').style.display = v === 'board' ? 'block' : 'none';
+    document.getElementById('input-view').style.display  = v === 'input'  ? 'block' : 'none';
+    document.querySelectorAll('.vbtn').forEach(function(b) {
+      b.classList.toggle('active',
+        (v === 'board' && b.textContent === 'Board') ||
+        (v === 'input' && b.textContent === 'Eintrag hinzufügen'));
+    });
+    if (v === 'board') loadData();
+  }
+
+  function renderBoard(entries) {
+    ['S','W','O','T'].forEach(function(q) {
+      var ul = document.getElementById('list-' + q);
+      ul.innerHTML = '';
+      if (!entries[q] || entries[q].length === 0) {
+        ul.innerHTML = '<li class="empty">Noch keine Einträge</li>';
+        return;
+      }
+      entries[q].forEach(function(t) {
+        var li = document.createElement('li');
+        li.textContent = t;
+        ul.appendChild(li);
+      });
+    });
+  }
+
+  function loadData() {
+    var dot = document.getElementById('pdot');
+    jsonp(GAS_URL + '?action=getEntries', function(data) {
+      if (data) {
+        renderBoard(data);
+        dot.classList.add('live');
+        setTimeout(function(){ dot.classList.remove('live'); }, 600);
+      }
+    });
+  }
+
+  function submitEntry() {
+    var q   = document.getElementById('q-select').value;
+    var t   = document.getElementById('text-in').value.trim();
+    var msg = document.getElementById('status-msg');
+    var btn = document.getElementById('submit-btn');
+    if (!t) { showMsg('Bitte einen Text eingeben.', 'err'); return; }
+    btn.disabled = true;
+    showMsg('Speichern …', '');
+    jsonp(GAS_URL + '?action=addEntry&quadrant=' + encodeURIComponent(q) + '&text=' + encodeURIComponent(t), function(data) {
+      btn.disabled = false;
+      if (data && data.ok) {
+        document.getElementById('text-in').value = '';
+        showMsg('Gespeichert!', 'ok');
+        setTimeout(loadData, 800);
+      } else {
+        showMsg('Fehler beim Speichern.', 'err');
+      }
+    });
+  }
+
+  function showMsg(txt, cls) {
+    var msg = document.getElementById('status-msg');
+    msg.textContent = txt;
+    msg.className = 'status-msg ' + (cls || '');
+    if (cls) setTimeout(function(){ msg.textContent = ''; msg.className = 'status-msg'; }, 3500);
+  }
+
+  loadData();
+  setInterval(loadData, 5000);
+</script>
+</body>
+</html>
